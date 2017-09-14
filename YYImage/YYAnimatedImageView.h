@@ -91,6 +91,13 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (nonatomic) NSUInteger maxPlayableFrameCount;
 
+/**
+ Set this value to override the default gif animation frame duration in seconds.
+ 
+ It is used only when playing the animation.
+ */
+@property (nonatomic) NSTimeInterval playableFrameDuration;
+
 @end
 
 

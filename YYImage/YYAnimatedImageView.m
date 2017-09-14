@@ -476,7 +476,7 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
     NSTimeInterval delay = 0;
     if (!_bufferMiss) {
         _time += link.duration;
-        delay = [image animatedImageDurationAtIndex:_curIndex];
+        delay = [self durationAtIndex:_curIndex forImage:image];
         if (_time < delay) return;
         _time -= delay;
         if (nextIndex == 0) {
@@ -488,7 +488,7 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
                 return; // stop at last frame
             }
         }
-        delay = [image animatedImageDurationAtIndex:nextIndex];
+        delay = [self durationAtIndex:nextIndex forImage:image];
         if (_time > delay) _time = delay; // do not jump over frame
     }
     LOCK(
@@ -622,6 +622,14 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
   NSUInteger indexWithStep = (currentIndex + self.animationStep);
   NSUInteger nextIndex = indexWithStep >= _totalFrameCount ? 0 : indexWithStep;
   return nextIndex;
+}
+
+- (NSTimeInterval)durationAtIndex:(NSUInteger)index forImage:(UIImage<YYAnimatedImage> *)image {
+  if (_playableFrameDuration) {
+    return _playableFrameDuration;
+  } else {
+    return [image animatedImageDurationAtIndex:index];
+  }
 }
 
 - (void)setRunloopMode:(NSString *)runloopMode {
