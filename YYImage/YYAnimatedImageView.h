@@ -80,6 +80,17 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property (nonatomic) NSUInteger maxBufferSize;
 
+/**
+ The max number of frames that will be selected to play the animation.
+ 
+ By default the image view loops through all the available frames to create the
+ animation. You can restrict the number of the frames to reduce both the memory
+ and the CPU usage.
+ 
+ The frames will be selected using (animatedImageFrameCount/maxPlayableFrameCount) step.
+ */
+@property (nonatomic) NSUInteger maxPlayableFrameCount;
+
 @end
 
 

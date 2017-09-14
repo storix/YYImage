@@ -149,6 +149,7 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
 }
 @property (nonatomic, readwrite) BOOL currentIsPlayingAnimation;
 - (void)calcMaxBufferCount;
+- (NSUInteger)animationStep;
 @end
 
 /// An operation for image fetch
@@ -171,9 +172,10 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
     NSUInteger idx = _nextIndex;
     NSUInteger max = view->_incrBufferCount < 1 ? 1 : view->_incrBufferCount;
     NSUInteger total = view->_totalFrameCount;
+    NSUInteger animationStep = [view animationStep];
     view = nil;
     
-    for (int i = 0; i < max; i++, idx++) {
+    for (int i = 0; i < max; i++, idx = idx + animationStep) {
         @autoreleasepool {
             if (idx >= total) idx = 0;
             if ([self isCancelled]) break;
@@ -433,7 +435,7 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
     [_requestQueue cancelAllOperations];
     [_requestQueue addOperationWithBlock: ^{
         _incrBufferCount = -60 - (int)(arc4random() % 120); // about 1~3 seconds to grow back..
-        NSNumber *next = @((_curIndex + 1) % _totalFrameCount);
+        NSNumber *next = @([self incrementedIndex:_curIndex]);
         LOCK(
              NSArray * keys = _buffer.allKeys;
              for (NSNumber * key in keys) {
@@ -447,7 +449,7 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
 
 - (void)didEnterBackground:(NSNotification *)notification {
     [_requestQueue cancelAllOperations];
-    NSNumber *next = @((_curIndex + 1) % _totalFrameCount);
+    NSNumber *next = @([self incrementedIndex:_curIndex]);
     LOCK(
          NSArray * keys = _buffer.allKeys;
          for (NSNumber * key in keys) {
@@ -462,7 +464,7 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
     UIImage <YYAnimatedImage> *image = _curAnimatedImage;
     NSMutableDictionary *buffer = _buffer;
     UIImage *bufferedImage = nil;
-    NSUInteger nextIndex = (_curIndex + 1) % _totalFrameCount;
+    NSUInteger nextIndex = [self incrementedIndex:_curIndex];
     BOOL bufferIsFull = NO;
     
     if (!image) return;
@@ -492,7 +494,7 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
     LOCK(
          bufferedImage = buffer[@(nextIndex)];
          if (bufferedImage) {
-             if ((int)_incrBufferCount < _totalFrameCount) {
+            if ((int)_incrBufferCount < self.totalPlayableFrameCount) {
                  [buffer removeObjectForKey:@(nextIndex)];
              }
              [self willChangeValueForKey:@"currentAnimatedImageIndex"];
@@ -503,9 +505,9 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
                  _curContentsRect = [image animatedImageContentsRectAtIndex:_curIndex];
                  [self setContentsRect:_curContentsRect forImage:_curFrame];
              }
-             nextIndex = (_curIndex + 1) % _totalFrameCount;
+            nextIndex = [self incrementedIndex:_curIndex];
              _bufferMiss = NO;
-             if (buffer.count == _totalFrameCount) {
+            if (buffer.count == self.totalPlayableFrameCount) {
                  bufferIsFull = YES;
              }
          } else {
@@ -605,6 +607,21 @@ typedef NS_ENUM(NSUInteger, YYAnimatedImageType) {
 
 - (NSUInteger)currentAnimatedImageIndex {
     return _curIndex;
+}
+
+- (NSUInteger)animationStep {
+  NSUInteger step = _maxPlayableFrameCount ? ceil(_totalFrameCount/_maxPlayableFrameCount) : 1;
+  return step <= 0 ? 1 : step;
+}
+
+- (NSUInteger)totalPlayableFrameCount {
+  return _maxPlayableFrameCount ? ceil(_totalFrameCount/self.animationStep) : _totalFrameCount;
+}
+
+- (NSUInteger)incrementedIndex:(NSUInteger)currentIndex {
+  NSUInteger indexWithStep = (currentIndex + self.animationStep);
+  NSUInteger nextIndex = indexWithStep >= _totalFrameCount ? 0 : indexWithStep;
+  return nextIndex;
 }
 
 - (void)setRunloopMode:(NSString *)runloopMode {
